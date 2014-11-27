@@ -1,0 +1,319 @@
+heat_template_version: 2013-05-23
+
+description: |
+  Sample Heat template that creates a server, injects a simple
+  BASH script through cloud-init that installs Chef-client and
+  joins a Chef Server.
+
+parameter_groups:
+
+- label: Server Parameters
+  parameters:
+  - flavor
+  - image
+  - name
+
+- label: Chef Parameters
+  parameters:
+  - chef_encrypted_data_bag_secret
+  - chef_environment
+  - chef_organization
+  - chef_role
+  - chef_runlist
+  - chef_server_url
+  - chef_validation_key
+  - chef_version
+
+parameters:
+
+  image:
+    label: Image
+    description: |
+      Optional: Server image used for the server created
+      as a part of this deployment.
+    type: string
+    default: Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+    constraints:
+    - allowed_values:
+      - CentOS 5.11
+      - CentOS 6.5
+      - CentOS 6.5 (PVHVM)
+      - CentOS 7 (PVHVM)
+      - Debian 6.06 (Squeeze)
+      - Debian 7 (Wheezy) (PVHVM)
+      - Red Hat Enterprise Linux 5.11
+      - Red Hat Enterprise Linux 6.5
+      - Red Hat Enterprise Linux 6.5 (PVHVM)
+      - Ubuntu 10.04 LTS (Lucid Lynx)
+      - Ubuntu 12.04 LTS (Precise Pangolin)
+      - Ubuntu 12.04 LTS (Precise Pangolin) (PVHVM)
+      - Ubuntu 14.04 LTS (Trusty Tahr)
+      - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
+      description: Must be a supported operating system.
+
+  flavor:
+    label: Flavor
+    description: |
+      Optional: Rackspace Cloud Server flavor to use. The size is based on the
+      amount of RAM for the provisioned server.
+    type: string
+    default: 1 GB Performance
+    constraints:
+    - allowed_values:
+      - 512MB Standard Instance
+      - 1GB Standard Instance
+      - 2GB Standard Instance
+      - 4GB Standard Instance
+      - 8GB Standard Instance
+      - 15GB Standard Instance
+      - 30GB Standard Instance
+      - 1 GB General Purpose v1
+      - 2 GB General Purpose v1
+      - 4 GB General Purpose v1
+      - 8 GB General Purpose v1
+      - 15 GB I/O v1
+      - 30 GB I/O v1
+      - 60 GB I/O v1
+      - 90 GB I/O v1
+      - 120 GB I/O v1
+      - 1 GB Performance
+      - 2 GB Performance
+      - 4 GB Performance
+      - 8 GB Performance
+      - 15 GB Performance
+      - 30 GB Performance
+      - 60 GB Performance
+      - 90 GB Performance
+      - 120 GB Performance
+      description: |
+        Must be a valid Rackspace Cloud Server flavor for the region you have
+        selected to deploy into.
+
+  name:
+    label: Name
+    description: Optional: Cloud Server's base name
+    type: string
+    default: server
+    constraints:
+    - length:
+        min: 1
+        max: 64
+    - allowed_pattern: "^[a-zA-Z0-9]([a-zA-Z0-9._-])*$"
+      description: |
+        Must begin with a letter or number and be alphanumeric or '-' and '.'
+
+  chef_encrypted_data_bag_secret:
+    label: Encrypted data bag secret
+    description: |
+      Optional: encrypted data bag secret key
+    type: string
+    default: ''
+
+  chef_environment:
+    label: Environment
+    description: |
+      Optional: Chef Environment
+    type: string
+    default: _default
+
+  chef_organization:
+    label: Organization
+    description: |
+      Required: Chef organization
+    type: string
+    default:
+
+  chef_role:
+    label: Role
+    description: |
+      Optional: Chef Role.
+    type: string
+    default: _default
+
+  chef_runlist:
+    label: Runlist
+    description: |
+      Optional: Chef Runlist. Will take precedence over the Chef Role
+    type: string
+    default: ''
+
+  chef_server_url:
+    label: server URL
+    description: |
+       Custom Chef Server URL. Defaults to 'null'.
+       Chef Inc.'s "Hosted Chef" URL will be infered from the Organization.
+    type: string
+    default: ''
+
+  chef_validation_key:
+    label: validation key
+    description: |
+      Required: chef-client will attempt to use the private key assigned to the
+      chef-validator, located in /etc/chef/validation.pem. If, for any reason,
+      the chef-validator is unable to make an authenticated request to the
+      Chef server, the initial chef-client run will fail.
+    type: string
+    default:
+
+  chef_version:
+    label: version
+    description: |
+      Version of Chef Client to use. Defaults to the latest release.
+    type: string
+    default: latest
+
+  ssh_keyname:
+    type: string
+
+resources:
+
+  server:
+    type: "Rackspace::Cloud::Server"
+    properties:
+      name: { get_param: name }
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: ssh_keyname }
+      metadata:
+        rax-heat: { get_param: "OS::stack_id" }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+
+            # Exit script if any command fails
+            set -e
+            set -o pipefail
+
+            LOGFILE="/var/log/cloud-init-chef-bootstrap.setup.$$"
+
+            echo "$(date) - Starting Chef Bootstrap" >> $LOGFILE
+
+            # Is this Cloud Server RackConnected V2?
+            echo "$(date) - Checking for RackConnect V2" >> $LOGFILE
+            RCV2_CHECK='xenstore-exists vm-data/user-metadata/rackconnect_automation_stat'
+
+            # Wait for RackConnected V2 automation for 10 minutes
+            # 600 seconds = 60 periods of 10 seconds
+            if [ $(RCV2_CHECK) -ne 0 ]; then
+
+              for i in $(seq 1 60); do
+
+                RC_STATUS=$(xenstore-read vm-data/user-metadata/rackconnect_automation_status)
+                if [ $RC_STATUS = "\\"DEPLOYED\\"" ]; then
+                  break;
+                fi
+
+                echo "Waiting for RackConnect V2 automation: $i of 60" >> $LOGFILE
+                sleep 10
+              done
+
+            FETCHER=''
+            # Check for the 'wget' command
+            echo "$(date) - Checking for the 'wget' command" >> $LOGFILE
+            command -v wget 2>/dev/null && FETCHER='wget' || { echo >> $LOGFILE "$(date) - 'wget' not found"; }
+
+            # Check for the 'curl' command, if 'wget' is not present
+            if [ -z "$FETCHER" ]; then
+              echo "$(date) - Checking for the 'curl' command" >> $LOGFILE
+              command -v curl 2>/dev/null && FETCHER='curl' || { echo >> $LOGFILE "$(date) - 'curl' not found either, aborting"; exit 1;}
+            fi
+
+            # Create the encrypted data bag key file
+            echo "$(date) - Creating an encrypted data bag key file in /etc/chef/encrypted_data_bag_secret" >> $LOGFILE
+            echo -e '%encrypted_data_bag_secret%' > /etc/chef/encrypted_data_bag_secret
+
+            # Debug log
+            echo "$(date) - chef_environment parameter: %chef_environment%" >> $LOGFILE
+            echo "$(date) - chef_organization parameter: %chef_organization%" >> $LOGFILE
+            echo "$(date) - chef_role parameter: %chef_role%" >> $LOGFILE
+            echo "$(date) - chef_runlist parameter: %chef_runlist%" >> $LOGFILE
+
+            # Infer the Chef Server's URL if none was passed
+            CHEF_SERVER_URL='%chef_server_url%'
+            if [ -n $CHEF_SERVER_URL ]; then
+              echo "$(date) - chef_server_url parameter: using https://api.opscode.com" >> $LOGFILE
+              CHEF_SERVER_URL='https://api.opscode.com/organizations/%chef_organization%'
+            else
+              echo "$(date) - chef_server_url parameter: $CHEF_SERVER_URL" >> $LOGFILE
+              CHEF_SERVER_URL='%chef_server_url%'
+            fi
+
+            # Debug log
+            echo "$(date) - chef_version parameter: %chef_version%" >> $LOGFILE
+
+            # Store the validation key in /etc/chef/validator.pem
+            echo "$(date) - Storing validation key in /etc/chef/validator.pem" >> $LOGFILE
+            mkdir /etc/chef /var/log/chef &>/dev/null
+            echo -e '%chef_validation_key%' >/etc/chef/validator.pem
+
+            # Cook a minimal client.rb for getting the chef-client registered
+            echo "$(date) - Creating a minimal /etc/chef/client.rb" >> $LOGFILE
+            cat >/etc/chef/client.rb <<EOF
+              log_level        :info
+              log_location     STDOUT
+              chef_server_url  "$CHEF_SERVER_URL"
+              validation_key         "/etc/chef/validator.pem"
+              validation_client_name "%chef_organization%-validator"
+            EOF
+
+            # Cook the first-boot file
+            echo 'Creating a minimal /etc/chef/first-boot.json' >> $LOGFILE
+
+            CHEF_RUN_LIST='%chef_runlist%'
+            if [ -z $CHEF_RUN_LIST ]; then
+              cat >/etc/chef/first-boot.json <<EOF
+              { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
+              EOF
+            else
+              cat >/etc/chef/first-boot.json <<EOF
+              { "environment": "%chef_environment%", "run_list":["role[%chef_role%]"] }
+              EOF
+            fi
+
+            # Install chef-client through Omnibus (if not already available)
+            INSTALL_CHEF=0
+            command -v chef-client 2>/dev/null || { echo >> $LOGFILE "$(date) - chef-client not found"; INSTALL_CHEF='1';}
+
+            if [ INSTALL_CHEF -ne 1 ] && [ FETCHER = 'wget']; then
+              echo "$(date) - Installing Chef Omnibus installer (wget)" >> $LOGFILE
+              wget -qO- https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
+
+            elif [ INSTALL_CHEF -ne 1 ] && [ FETCHER = 'curl']; then
+              echo "$(date) - Installing Chef Omnibus installer (curl)" >> $LOGFILE
+              curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
+            fi
+
+            command -v chef-client 2>/dev/null || { echo >> $LOGFILE "$(date) - chef-client not installed. Aborting..."; exit 1;}
+
+            # Kick off the first chef run
+            # martinb3: this feels like a terrible hack, but if we're going to scale it, it MUST come up and converge
+            # probably to blame: https://github.com/AutomationSupport/1864107-Default/blob/master/recipes/default.rb#L43-48
+            for runno in $(seq 1 5); do
+
+              CHEF_FAIL=0
+              echo "$(date) - Kicking off chef-client run $runno of 5" >> $LOGFILE
+              /usr/bin/chef-client -l info -j /etc/chef/first-boot.json -L /var/log/chef/client.log || CHEF_FAIL=1
+
+              if [ $CHEF_FAIL -eq 0 ]; then
+                echo "$(date) - Chef run $runno converged successfully" >> $LOGFILE
+                break
+              fi
+
+              # Debug information
+              echo "$(date) - Chef run $runno did NOT converge successfully, sleep for 30 seconds and trying again" >> $LOGFILE
+              echo >> $LOGFILE # get a newline around stacktrace
+              cat /var/chef/cache/chef-stacktrace.out >> $LOGFILE # save the stack trace, useful
+              echo >> $LOGFILE # get a newline around stacktrace
+              sleep 30
+            done
+
+          params:
+            "%chef_encrypted_data_bag_secret%": { get_param: chef_encrypted_data_bag_secret}
+            "%chef_environment%": { get_param: chef_environment}
+            "%chef_organization%": { get_param: chef_organization}
+            "%chef_role%": { get_param: chef_role}
+            "%chef_runlist%": { get_param: chef_runlist}
+            "%chef_server_url%": { get_param: chef_server_url}
+            "%chef_validation_key%": { get_param: chef_validation_key }
+            "%chef_version%": { get_param: chef_version}

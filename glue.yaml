@@ -945,7 +945,7 @@ resources:
                 '%name%': { get_param: t9_name }
           image: { get_param: t9_image }
           flavor: { get_param: t9_flavor }
-          role: { get_param: t9_role }
+          chef_role: { get_param: t9_role }
           chef_runlist: { get_param: t9_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -969,7 +969,7 @@ resources:
                 '%name%': { get_param: t8_name }
           image: { get_param: t8_image }
           flavor: { get_param: t8_flavor }
-          role: { get_param: t8_role }
+          chef_role: { get_param: t8_role }
           chef_runlist: { get_param: t8_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -993,7 +993,7 @@ resources:
                 '%name%': { get_param: t7_name }
           image: { get_param: t7_image }
           flavor: { get_param: t7_flavor }
-          role: { get_param: t7_role }
+          chef_role: { get_param: t7_role }
           chef_runlist: { get_param: t7_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -1017,7 +1017,7 @@ resources:
                 '%name%': { get_param: t6_name }
           image: { get_param: t6_image }
           flavor: { get_param: t6_flavor }
-          role: { get_param: t6_role }
+          chef_role: { get_param: t6_role }
           chef_runlist: { get_param: t6_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -1041,7 +1041,7 @@ resources:
                 '%name%': { get_param: t5_name }
           image: { get_param: t5_image }
           flavor: { get_param: t5_flavor }
-          role: { get_param: t5_role }
+          chef_role: { get_param: t5_role }
           chef_runlist: { get_param: t5_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -1065,7 +1065,7 @@ resources:
                 '%name%': { get_param: t4_name }
           image: { get_param: t4_image }
           flavor: { get_param: t4_flavor }
-          role: { get_param: t4_role }
+          chef_role: { get_param: t4_role }
           chef_runlist: { get_param: t4_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -1089,7 +1089,7 @@ resources:
                 '%name%': { get_param: t3_name }
           image: { get_param: t3_image }
           flavor: { get_param: t3_flavor }
-          role: { get_param: t3_role }
+          chef_role: { get_param: t3_role }
           chef_runlist: { get_param: t3_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }
@@ -1113,7 +1113,7 @@ resources:
                 '%name%': { get_param: t2_name }
           image: { get_param: t2_image }
           flavor: { get_param: t2_flavor }
-          role: { get_param: t2_role }
+          chef_role: { get_param: t2_role }
           chef_runlist: { get_param: t2_runlist }
           chef_environment: { get_param: chef_environment }
           chef_organization: { get_param: chef_organization }

@@ -5,7 +5,6 @@ description: |
   joins a Chef Server.
 
 parameter_groups:
-
 - label: Chef Parameters
   parameters:
   - chef_encrypted_data_bag_secret
@@ -92,7 +91,6 @@ parameter_groups:
   - t9_runlist
 
 parameters:
-
   child_template:
     type: string
     default: https://raw.githubusercontent.com/WalterLenuzza/heat-chef-glue/master/bootstrapper.yaml

@@ -187,37 +187,40 @@ resources:
             set -o pipefail
 
             LOGFILE="/var/log/cloud-init-chef-bootstrap.setup.$$"
-
             echo "$(date) - Starting Chef Bootstrap" >> $LOGFILE
 
             # Is this Cloud Server RackConnected V2?
             echo "$(date) - Checking for RackConnect V2" >> $LOGFILE
-            RCV2_CHECK='xenstore-exists vm-data/user-metadata/rackconnect_automation_stat'
+            RC_CHECK=$(xenstore-exists vm-data/user-metadata/rackconnect_automation_stat 2> /dev/null)$? || true
 
-            # Wait for RackConnected V2 automation for 10 minutes
-            # 600 seconds = 60 periods of 10 seconds
-            if [ $(RCV2_CHECK) -ne 0 ]; then
+            if [ "$RC_CHECK" = 0 ]; then
 
-              for i in $(seq 1 60); do
+              echo "$(date) - RackConnect V2 detected" >> $LOGFILE
+              # Wait for RackConnected V2 automation for 10 minutes
+              # 600 seconds = 60 periods of 10 seconds
+              for attempt in $(seq 1 60); do
 
-                RC_STATUS=$(xenstore-read vm-data/user-metadata/rackconnect_automation_status)
-                if [ $RC_STATUS = "\\"DEPLOYED\\"" ]; then
+                RC_STATUS=$(xenstore-read vm-data/user-metadata/rackconnect_automation_status 2> /dev/null)
+                if [ $RC_STATUS = \"DEPLOYED\" ]; then
                   break;
                 fi
 
-                echo "Waiting for RackConnect V2 automation: $i of 60" >> $LOGFILE
+                echo "Waiting for RackConnect V2 automation: $attempt of 60" >> $LOGFILE
                 sleep 10
               done
+            else
+              echo "$(date) - RackConnect V2 not detected" >> $LOGFILE
+            fi
 
             FETCHER=''
             # Check for the 'wget' command
             echo "$(date) - Checking for the 'wget' command" >> $LOGFILE
-            command -v wget 2>/dev/null && FETCHER='wget' || { echo >> $LOGFILE "$(date) - 'wget' not found"; }
+            command -v wget >/dev/null 2>&1 && FETCHER='wget' || { echo >> $LOGFILE "$(date) - 'wget' not found"; }
 
             # Check for the 'curl' command, if 'wget' is not present
             if [ -z "$FETCHER" ]; then
               echo "$(date) - Checking for the 'curl' command" >> $LOGFILE
-              command -v curl 2>/dev/null && FETCHER='curl' || { echo >> $LOGFILE "$(date) - 'curl' not found either, aborting"; exit 1;}
+              command -v curl >/dev/null 2>&1 && FETCHER='curl' || { echo >> $LOGFILE "$(date) - 'curl' not found either, aborting"; exit 1;}
             fi
 
             # Create the encrypted data bag key file
@@ -259,36 +262,36 @@ resources:
             EOF
 
             # Cook the first-boot file
-            echo 'Creating a minimal /etc/chef/first-boot.json' >> $LOGFILE
+            echo "$(date) - Creating /etc/chef/first-boot.json" >> $LOGFILE
 
             CHEF_RUN_LIST='%chef_runlist%'
             if [ -z $CHEF_RUN_LIST ]; then
               cat >/etc/chef/first-boot.json <<EOF
               { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
-              EOF
+            EOF
             else
               cat >/etc/chef/first-boot.json <<EOF
               { "environment": "%chef_environment%", "run_list":["role[%chef_role%]"] }
-              EOF
+            EOF
             fi
 
             # Install chef-client through Omnibus (if not already available)
             INSTALL_CHEF=0
-            command -v chef-client 2>/dev/null || { echo >> $LOGFILE "$(date) - chef-client not found"; INSTALL_CHEF='1';}
+            command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not found"; INSTALL_CHEF='1';}
 
-            if [ INSTALL_CHEF -ne 1 ] && [ FETCHER = 'wget']; then
-              echo "$(date) - Installing Chef Omnibus installer (wget)" >> $LOGFILE
+            if [ $INSTALL_CHEF = 1 ] && [ $FETCHER = 'wget' ]; then
+              echo "$(date) - Installing Chef through Omnibus (wget)" >> $LOGFILE
               wget -qO- https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
 
-            elif [ INSTALL_CHEF -ne 1 ] && [ FETCHER = 'curl']; then
-              echo "$(date) - Installing Chef Omnibus installer (curl)" >> $LOGFILE
+            elif [ $INSTALL_CHEF = 1 ] && [ $FETCHER = 'curl' ]; then
+              echo "$(date) - Installing Chef through Omnibus (curl)" >> $LOGFILE
               curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
             fi
 
-            command -v chef-client 2>/dev/null || { echo >> $LOGFILE "$(date) - chef-client not installed. Aborting..."; exit 1;}
+            command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not installed. Aborting..."; exit 1;}
 
             # Kick off the first chef run
-            # martinb3: this feels like a terrible hack, but if we're going to scale it, it MUST come up and converge
+            # this feels like a terrible hack, but if we're going to scale it, it MUST come up and converge
             # probably to blame: https://github.com/AutomationSupport/1864107-Default/blob/master/recipes/default.rb#L43-48
             for runno in $(seq 1 5); do
 

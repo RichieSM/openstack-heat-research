@@ -226,7 +226,7 @@ resources:
 
             # Create /etc/chef directory
             echo "$(date) - Creating /etc/chef" >> $LOGFILE
-            mkdir /etc/chef /var/log/chef &>/dev/null
+            mkdir /etc/chef /var/log/chef &>/dev/null || true
 
             # Create the encrypted data bag key file
             echo "$(date) - Creating an encrypted data bag key file in /etc/chef/encrypted_data_bag_secret" >> $LOGFILE
@@ -242,8 +242,8 @@ resources:
 
             # Infer the Chef Server's URL if none was passed
             CHEF_SERVER_URL='%chef_server_url%'
-            if [ -n "$CHEF_SERVER_URL" ]; then
-              echo "$(date) - chef_server_url parameter: using https://api.opscode.com" >> $LOGFILE
+            if [ -z "$CHEF_SERVER_URL" ]; then
+              echo "$(date) - chef_server_url is empty, using https://api.opscode.com" >> $LOGFILE
               CHEF_SERVER_URL='https://api.opscode.com/organizations/%chef_organization%'
             else
               echo "$(date) - chef_server_url parameter: $CHEF_SERVER_URL" >> $LOGFILE
@@ -275,11 +275,11 @@ resources:
             CHEF_RUN_LIST='%chef_runlist%'
             if [ -z "$CHEF_RUN_LIST" ]; then
               cat >/etc/chef/first-boot.json <<EOF
-              { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
+            { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
             EOF
             else
               cat >/etc/chef/first-boot.json <<EOF
-              { "environment": "%chef_environment%", "run_list":["role[%chef_role%]"] }
+            { "environment": "%chef_environment%", "run_list":["role[%chef_role%]"] }
             EOF
             fi
 

@@ -201,7 +201,7 @@ resources:
               for attempt in $(seq 1 60); do
 
                 RC_STATUS=$(xenstore-read vm-data/user-metadata/rackconnect_automation_status 2> /dev/null)
-                if [ $RC_STATUS = \"DEPLOYED\" ]; then
+                if [ "$RC_STATUS" = \"DEPLOYED\" ]; then
                   break;
                 fi
 
@@ -222,10 +222,17 @@ resources:
               echo "$(date) - Checking for the 'curl' command" >> $LOGFILE
               command -v curl >/dev/null 2>&1 && FETCHER='curl' || { echo >> $LOGFILE "$(date) - 'curl' not found either, aborting"; exit 1;}
             fi
+            echo "$(date) - Command found: $FETCHER" >> $LOGFILE
+
+            # Create /etc/chef directory
+            echo "$(date) - Creating /etc/chef" >> $LOGFILE
+            mkdir /etc/chef /var/log/chef &>/dev/null
 
             # Create the encrypted data bag key file
             echo "$(date) - Creating an encrypted data bag key file in /etc/chef/encrypted_data_bag_secret" >> $LOGFILE
-            echo -e '%encrypted_data_bag_secret%' > /etc/chef/encrypted_data_bag_secret
+            cat >/etc/chef/encrypted_data_bag_secret <<EOF
+            %encrypted_data_bag_secret%
+            EOF
 
             # Debug log
             echo "$(date) - chef_environment parameter: %chef_environment%" >> $LOGFILE
@@ -235,7 +242,7 @@ resources:
 
             # Infer the Chef Server's URL if none was passed
             CHEF_SERVER_URL='%chef_server_url%'
-            if [ -n $CHEF_SERVER_URL ]; then
+            if [ -n "$CHEF_SERVER_URL" ]; then
               echo "$(date) - chef_server_url parameter: using https://api.opscode.com" >> $LOGFILE
               CHEF_SERVER_URL='https://api.opscode.com/organizations/%chef_organization%'
             else
@@ -248,8 +255,9 @@ resources:
 
             # Store the validation key in /etc/chef/validator.pem
             echo "$(date) - Storing validation key in /etc/chef/validator.pem" >> $LOGFILE
-            mkdir /etc/chef /var/log/chef &>/dev/null
-            echo -e '%chef_validation_key%' >/etc/chef/validator.pem
+            cat >/etc/chef/validator.pem <<EOF
+            %chef_validation_key%
+            EOF
 
             # Cook a minimal client.rb for getting the chef-client registered
             echo "$(date) - Creating a minimal /etc/chef/client.rb" >> $LOGFILE
@@ -265,7 +273,7 @@ resources:
             echo "$(date) - Creating /etc/chef/first-boot.json" >> $LOGFILE
 
             CHEF_RUN_LIST='%chef_runlist%'
-            if [ -z $CHEF_RUN_LIST ]; then
+            if [ -z "$CHEF_RUN_LIST" ]; then
               cat >/etc/chef/first-boot.json <<EOF
               { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
             EOF
@@ -279,27 +287,23 @@ resources:
             INSTALL_CHEF=0
             command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not found"; INSTALL_CHEF='1';}
 
-            if [ $INSTALL_CHEF = 1 ] && [ $FETCHER = 'wget' ]; then
+            if [ "$INSTALL_CHEF" = 1 ] && [ "$FETCHER" = 'wget' ]; then
               echo "$(date) - Installing Chef through Omnibus (wget)" >> $LOGFILE
               wget -qO- https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
-
-            elif [ $INSTALL_CHEF = 1 ] && [ $FETCHER = 'curl' ]; then
+            elif [ "$INSTALL_CHEF" = 1 ] && [ "$FETCHER" = 'curl' ]; then
               echo "$(date) - Installing Chef through Omnibus (curl)" >> $LOGFILE
               curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
             fi
-
             command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not installed. Aborting..."; exit 1;}
 
             # Kick off the first chef run
-            # this feels like a terrible hack, but if we're going to scale it, it MUST come up and converge
-            # probably to blame: https://github.com/AutomationSupport/1864107-Default/blob/master/recipes/default.rb#L43-48
             for runno in $(seq 1 5); do
 
               CHEF_FAIL=0
               echo "$(date) - Kicking off chef-client run $runno of 5" >> $LOGFILE
               /usr/bin/chef-client -l info -j /etc/chef/first-boot.json -L /var/log/chef/client.log || CHEF_FAIL=1
 
-              if [ $CHEF_FAIL -eq 0 ]; then
+              if [ "$CHEF_FAIL" = 0 ]; then
                 echo "$(date) - Chef run $runno converged successfully" >> $LOGFILE
                 break
               fi

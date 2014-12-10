@@ -1,0 +1,7 @@
+# Rename this file to .heatcreds and source it
+# 
+export OS_USERNAME=elimgarak
+export OS_TENANT_ID=12345678
+export OS_AUTH_TOKEN=67da7462d95a44a19da752887cc0e8b1
+export OS_NO_CLIENT_AUTH=1
+export HEAT_URL=https://lon.orchestration.api.rackspacecloud.com/v2/12345678/

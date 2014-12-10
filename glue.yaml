@@ -1160,3 +1160,75 @@ outputs:
   t1_loadbalancer:
     description: Tier 1 Load Balancer IPv4
     value: { get_attr: [tier1_load_balancer, PublicIp] }
+
+  t2_addresses:
+    description: Tier 2 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier2_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier2_setup, private_ip] }
+
+  t3_addresses:
+    description: Tier 3 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier3_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier3_setup, private_ip] }
+
+  t4_addresses:
+    description: Tier 4 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier4_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier4_setup, private_ip] }
+
+  t5_addresses:
+    description: Tier 5 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier5_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier5_setup, private_ip] }
+
+  t6_addresses:
+    description: Tier 6 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier6_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier6_setup, private_ip] }
+
+  t7_addresses:
+    description: Tier 7 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier7_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier7_setup, private_ip] }
+
+  t8_addresses:
+    description: Tier 8 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier8_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier8_setup, private_ip] }
+
+  t9_addresses:
+    description: Tier 9 Public IPv4 - Private IPv4
+    value:
+      str_replace:
+        template: '%publicipv4% - %privateipv4%'
+        params:
+          '%publicipv4%': { get_attr: [tier9_setup, public_ip] }
+          '%privateipv4%': { get_attr: [tier9_setup, private_ip] }

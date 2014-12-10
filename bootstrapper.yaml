@@ -304,8 +304,8 @@ resources:
               /usr/bin/chef-client -l info -j /etc/chef/first-boot.json -L /var/log/chef/client.log || CHEF_FAIL=1
 
               if [ "$CHEF_FAIL" = 0 ]; then
-                echo "$(date) - Chef run $runno converged successfully" >> $LOGFILE
-                break
+                echo "$(date) - Chef run $runno converged successfully. Bootstrap complete!" >> $LOGFILE
+                exit 0
               fi
 
               # Debug information
@@ -315,6 +315,9 @@ resources:
               echo >> $LOGFILE # get a newline around stacktrace
               sleep 30
             done
+
+            echo "$(date) - Chef did NOT converge successfully after 5 runs, aborting..." >> $LOGFILE
+            exit 1
 
           params:
             "%chef_encrypted_data_bag_secret%": { get_param: chef_encrypted_data_bag_secret}

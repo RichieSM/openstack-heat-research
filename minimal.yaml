@@ -189,51 +189,6 @@ resources:
             LOGFILE="/var/log/cloud-init-chef-bootstrap.setup.$$"
             echo "$(date) - Starting Chef Bootstrap" >> $LOGFILE
 
-            # Is this Cloud Server RackConnected V2?
-            echo "$(date) - Checking for RackConnect V2" >> $LOGFILE
-            RC_CHECK=$(xenstore-exists vm-data/user-metadata/rackconnect_automation_stat 2> /dev/null)$? || true
-
-            if [ "$RC_CHECK" = 0 ]; then
-
-              echo "$(date) - RackConnect V2 detected" >> $LOGFILE
-              # Wait for RackConnected V2 automation for 10 minutes
-              # 600 seconds = 60 periods of 10 seconds
-              for attempt in $(seq 1 60); do
-
-                RC_STATUS=$(xenstore-read vm-data/user-metadata/rackconnect_automation_status 2> /dev/null)
-                if [ "$RC_STATUS" = \"DEPLOYED\" ]; then
-                  break;
-                fi
-
-                echo "Waiting for RackConnect V2 automation: $attempt of 60" >> $LOGFILE
-                sleep 10
-              done
-            else
-              echo "$(date) - RackConnect V2 not detected" >> $LOGFILE
-            fi
-
-            FETCHER=''
-            # Check for the 'wget' command
-            echo "$(date) - Checking for the 'wget' command" >> $LOGFILE
-            command -v wget >/dev/null 2>&1 && FETCHER='wget' || { echo >> $LOGFILE "$(date) - 'wget' not found"; }
-
-            # Check for the 'curl' command, if 'wget' is not present
-            if [ -z "$FETCHER" ]; then
-              echo "$(date) - Checking for the 'curl' command" >> $LOGFILE
-              command -v curl >/dev/null 2>&1 && FETCHER='curl' || { echo >> $LOGFILE "$(date) - 'curl' not found either, aborting"; exit 1;}
-            fi
-            echo "$(date) - Command found: $FETCHER" >> $LOGFILE
-
-            # Create /etc/chef directory
-            echo "$(date) - Creating /etc/chef" >> $LOGFILE
-            mkdir /etc/chef /var/log/chef &>/dev/null || true
-
-            # Create the encrypted data bag key file
-            echo "$(date) - Creating an encrypted data bag key file in /etc/chef/encrypted_data_bag_secret" >> $LOGFILE
-            cat >/etc/chef/encrypted_data_bag_secret <<EOF
-            %encrypted_data_bag_secret%
-            EOF
-
             # Debug log
             echo "$(date) - chef_environment parameter: %chef_environment%" >> $LOGFILE
             echo "$(date) - chef_organization parameter: %chef_organization%" >> $LOGFILE
@@ -251,72 +206,7 @@ resources:
             fi
 
             # Debug log
-            echo "$(date) - chef_version parameter: %chef_version%" >> $LOGFILE
-
-            # Store the validation key in /etc/chef/validator.pem
-            echo "$(date) - Storing validation key in /etc/chef/validator.pem" >> $LOGFILE
-            cat >/etc/chef/validator.pem <<EOF
-            %chef_validation_key%
-            EOF
-
-            # Cook a minimal client.rb for getting the chef-client registered
-            echo "$(date) - Creating a minimal /etc/chef/client.rb" >> $LOGFILE
-            cat >/etc/chef/client.rb <<EOF
-              log_level        :info
-              log_location     STDOUT
-              chef_server_url  "$CHEF_SERVER_URL"
-              validation_key         "/etc/chef/validator.pem"
-              validation_client_name "%chef_organization%-validator"
-            EOF
-
-            # Cook the first-boot file
-            echo "$(date) - Creating /etc/chef/first-boot.json" >> $LOGFILE
-
-            CHEF_RUN_LIST='%chef_runlist%'
-            if [ -z "$CHEF_RUN_LIST" ]; then
-              cat >/etc/chef/first-boot.json <<EOF
-            { "environment": "%chef_environment%", "run_list":[$CHEF_RUN_LIST] }
-            EOF
-            else
-              cat >/etc/chef/first-boot.json <<EOF
-            { "environment": "%chef_environment%", "run_list":["role[%chef_role%]"] }
-            EOF
-            fi
-
-            # Install chef-client through Omnibus (if not already available)
-            INSTALL_CHEF=0
-            command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not found"; INSTALL_CHEF='1';}
-
-            if [ "$INSTALL_CHEF" = 1 ] && [ "$FETCHER" = 'wget' ]; then
-              echo "$(date) - Installing Chef through Omnibus (wget)" >> $LOGFILE
-              wget -qO- https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
-            elif [ "$INSTALL_CHEF" = 1 ] && [ "$FETCHER" = 'curl' ]; then
-              echo "$(date) - Installing Chef through Omnibus (curl)" >> $LOGFILE
-              curl -L https://www.opscode.com/chef/install.sh | bash -s -- -v %chef_version% &>>$LOGFILE
-            fi
-            command -v chef-client >/dev/null 2>&1 || { echo >> $LOGFILE "$(date) - chef-client not installed. Aborting..."; exit 1;}
-
-            # Kick off the first chef run
-            for runno in $(seq 1 5); do
-
-              CHEF_FAIL=0
-              echo "$(date) - Kicking off chef-client run $runno of 5" >> $LOGFILE
-              /usr/bin/chef-client -l info -j /etc/chef/first-boot.json -L /var/log/chef/client.log || CHEF_FAIL=1
-
-              if [ "$CHEF_FAIL" = 0 ]; then
-                echo "$(date) - Chef run $runno converged successfully. Bootstrap complete!" >> $LOGFILE; exit 0;
-              fi
-
-              # Debug information
-              echo "$(date) - Chef run $runno did NOT converge successfully, sleep for 30 seconds and trying again" >> $LOGFILE
-              echo >> $LOGFILE # get a newline around stacktrace
-              cat /var/chef/cache/chef-stacktrace.out >> $LOGFILE # save the stack trace, useful
-              echo >> $LOGFILE # get a newline around stacktrace
-              sleep 30
-            done
-
-            echo "$(date) - Chef did NOT converge successfully after 5 runs, aborting..." >> $LOGFILE
-            exit 1
+            echo "$(date) - chef_version parameter: %chef_version%" >> $LOGFILEs
 
           params:
             "%chef_encrypted_data_bag_secret%": { get_param: chef_encrypted_data_bag_secret}

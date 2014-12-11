@@ -137,15 +137,15 @@ parameters:
   chef_version:
     label: Version
     description: |
-      Version of Chef Client to use. Defaults to the latest release.
+      Version of Chef Client to use. Defaults to the latest release
     type: string
     default: latest
 
   t1_load_balancer:
     label: Tier 1 Load Balancer
-    description: Load Balancer that points to nodes in Tier 2.
+    description: Load Balancer name that points to nodes in Tier 2
     type: string
-    default: tier1LB
+    default: tier1
     constraints:
     - length:
         min: 1
@@ -232,7 +232,7 @@ parameters:
 
   t2_count:
     label: Tier 2 Node Count
-    description: Number of Tier 2 nodes to create.
+    description: Number of Tier 2 nodes to create
     type: number
     default: 1
 

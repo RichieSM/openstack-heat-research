@@ -93,8 +93,7 @@ parameter_groups:
 parameters:
   child_template:
     type: string
-    #default: https://raw.githubusercontent.com/WalterLenuzza/heat-chef-glue/master/bootstrapper.yaml
-    default: https://raw.githubusercontent.com/WalterLenuzza/heat-chef-glue/master/minimal.yaml
+    default: https://raw.githubusercontent.com/RichieSM/openstack-heat-research/richard-dev/bootstrapper.yaml
 
   chef_encrypted_data_bag_secret:
     label: Encrypted data bag secret

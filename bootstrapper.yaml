@@ -183,8 +183,9 @@ resources:
             #!/bin/bash
 
             # Exit script if any command fails
-            set -e
+            set -v
             set -o pipefail
+            trap 'exit' ERR
 
             LOGFILE="/var/log/cloud-init-chef-bootstrap.setup.$$"
             echo "$(date) - Starting Chef Bootstrap" >> $LOGFILE
